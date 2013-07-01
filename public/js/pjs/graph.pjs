@@ -32,6 +32,7 @@ class Graph {
 	float SPACER_STRENGTH = 1000;
 	
   public Graph() {
+    println("new graph");
     nodes = new ArrayList();
   	edges = new ArrayList();
 
@@ -54,8 +55,7 @@ class Graph {
   void selectNode(Node n) {
     selectedNode.subject.setClosed();
     selectedNode = n;
-
-    $('aside').html(selectedNode.getSubject().html);
+    $('#explanation').html(selectedNode.getSubject().html);
 
     selectedNode.subject.setOpen();
     dragging = true;

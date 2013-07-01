@@ -27,27 +27,8 @@ class Neovigator < Sinatra::Application
   def create_graph
     graph_exists = neo.get_node_properties(1)
     return if graph_exists && graph_exists['name']
-
-    johnathan = create_person('Johnathan')
-    mark      = create_person('Mark')
-    phil      = create_person('Phil')
-    mary      = create_person('Mary')
-    luke      = create_person('Luke')
-    make_mutual(johnathan, mark, "friends")
-    make_mutual(mark, mary, "friends")
-    make_mutual(mark, phil, "friends")
-    make_mutual(phil, mary, "married")
-    make_mutual(phil, luke, "enemies")
   end
 
-  def make_mutual(node1, node2, rel_type)
-    neo.create_relationship(rel_type, node1, node2)
-    neo.create_relationship(rel_type, node2, node1)
-  end
-
-  def create_person(name)
-    neo.create_node("name" => name)
-  end
 
   def neighbours
     {"order"         => "depth first",
@@ -118,6 +99,58 @@ class Neovigator < Sinatra::Application
     create_graph
     @neoid = params["neoid"]
     haml :index
+  end
+
+  def extract_node_id(node)
+    case node
+      when Hash
+        node["self"].split('/').last
+      else
+        nil
+    end
+  end
+
+  def resultSetHtml(resultSet)
+    html_output = ""
+    resultSet.each do |row|
+      processed_row = Array.new
+      # iterate through the columsn
+      row.each do |column|
+        node_id = extract_node_id(column)
+        if node_id
+          processed_row.push(['node_id',node_id])
+          html_output = html_output + " <a class=\"nodelink\" href=\"#\" ref=\"" +node_id+"\">"+node_id+"</a>"
+        else
+           processed_row.push(['field',column])
+          html_output = html_output + " " +column
+        end
+      end
+      html_output = html_output + "<br> "
+    end
+    html_output
+  end
+
+  get '/query' do
+    haml "results"
+  end
+
+  get '/cypher' do
+    cypher_query = params[:query]
+    json_answer = neo.execute_query(cypher_query,{}).to_json
+    json_answer = JSON.parse(json_answer)
+    processed_resultset =  Array.new
+
+    result_output =""
+
+    # getting the result set
+    columns = json_answer["columns"]
+    data = json_answer["data"]
+
+    html_response = resultSetHtml(data)
+    if html_response==""
+      result_output = "No results were found for the given cypher query"
+    end
+    result_output = html_response
   end
 
 end

@@ -5,7 +5,8 @@
     %script{:src => "http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"}
     %script{:src => "http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"}
     %script{:src => "/js/ui.js"}
-    %script{:src => "/js/processing.min.js"} 
+    %script{:src => "/js/processing.min.js"}
+    %script{:src => "http://malsup.github.com/jquery.form.js"}
 
     %title Neovigator
 
@@ -16,10 +17,12 @@
         %h1 Neovigator
         %p Neography Browser
       %section#search
-        %form{:action => "/", :method => "get"}
-          %label Node ID:
-          %input#neoid{:type => "text", :value => "#{@neoid}", :name => "neoid"}
-          %input#loadnode{:type => "submit", :value => "Load", :class => "button"}
+        %form{:id =>"queryform", :action => "/cypher", :method => "get"}
+          %label Cypher Query:
+          %br{:style => "clear: both;"}
+          %textarea#neoid{:rows=>"4", :cols => "50", :value => "#{@neoid}", :name => "query"}="START root=node:node_auto_index(enid=&quot;/en/barack_obama&quot;)&#10;RETURN root"
+          %br{:style => "clear: both;"}
+          %input#loadnode{:type => "submit", :value => "Search", :class => "button"}
       %br{:style => "clear: both;"}
     %section#content
       = yield

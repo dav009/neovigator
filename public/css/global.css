@@ -125,7 +125,7 @@ aside {
   font-size: 12px;
   position: absolute;
   right: 17px;
-  top: 80px;
+  top: 150px;
   bottom: 50px;
   width: 290px;
   padding: 10px;
@@ -198,6 +198,9 @@ section#infovis {
 .clearfix, #frame, .navigation {display: block;}
 .clear {clear: both;}
 
+#explanation .nodelink{
+    /* result links style*/
+}
 
 /*
 -----------------------------------------
@@ -212,7 +215,7 @@ section#infovis {
     opacity: 0.9;
     border-radius: 5px;
     padding: 5px;
-    width: 300px;
+    width: 600px;
 		font-family: GraublauWeb, "Helvetica Neue", Helvetica, Arial, sans-serif;
 		text-align: right;
 		font-size: 13px;
@@ -221,6 +224,7 @@ section#infovis {
 
 #search .ghost-input {
     color: #99a;
+
 }
 
 #search .focused {

@@ -127,9 +127,6 @@ void addNode(Value val) {
 }
 
 
-
-
-
 void mousePressed() {
   
   // ->> g.checkSelected()
@@ -145,11 +142,29 @@ void mousePressed() {
 
 	if (!resourceId) return;
   if (mouseButton == LEFT) {
+
 		Resource r = g.selectedNode.subject;
+		console.error("clicked")
+		console.error(r)
 		Value selectedValue = r.getSelectedValue();
 		
 		if (selectedValue !== null && selectedValue.hovering) {
-		  addNode(selectedValue);
+		  console.error(selectedValue);
+		  splitted_value = selectedValue.id.split(":")
+		  type =splitted_value[0]
+		  page = parseInt(splitted_value[1])
+		  if (type=="more_outgoing" ||type=="more_incoming"){
+		    request_type = ""
+		    if (type=="more_outgoing")
+		    	request_type = "Outgoing"
+		    else
+		    	request_type = "Incoming"
+		  	r.loadMoreAdjacentData(page,request_type)
+		  	selectedValue.id = type+":"+ (parseInt(page)+1)
+		  }
+		  else{
+		  	addNode(selectedValue);
+		  }
 		} else if (g.selectedNode != null) {
 		  g.dragging = true;
 		}

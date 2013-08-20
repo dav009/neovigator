@@ -7,9 +7,15 @@ class Neovigator < Sinatra::Application
   set :haml, :format => :html5 
   set :app_file, __FILE__
 
+  def initialize
+    @page_size = 50
+    super()
+  end
+
   configure :test do
     require 'net-http-spy'
     Net::HTTP.http_logger_options = {:verbose => true} 
+    @page_size = 50
   end
 
   helpers do
@@ -48,6 +54,12 @@ class Neovigator < Sinatra::Application
     end
   end
 
+  def get_adjacent_for_donut(id, skip, limit)
+    out_ = neo.execute_query("start n=node("+id+") match n-[r]->m return ID(m), m.name?,type(r) skip "+skip.to_s()+" limit "+limit.to_s())
+    in_ = neo.execute_query("start n=node("+id+") match n<-[r]-m return ID(m), m.name?,type(r) skip "+skip.to_s()+" limit "+limit.to_s())
+    return out_, in_
+  end
+
   def get_properties(node)
     properties = "<ul>"
     node["data"].each_pair do |key, value|
@@ -56,32 +68,88 @@ class Neovigator < Sinatra::Application
     properties + "</ul>"
   end
 
+  get '/resources/moreAdjacent' do
+    content_type :json
+    
+    page_number = Integer(params[:page])
+    type = params[:type]
+    id = params[:id]
+    skip = @page_size * (page_number - 1)
+    limit = @page_size
+    out_, in_ = get_adjacent_for_donut(id, skip, limit)
+
+    rels = Hash.new{|h, k| h[k] = []}
+    attributes = Array.new
+    nodes = Hash.new
+
+    if type == "Outgoing"
+      all_nodes = out_['data']
+    else
+      all_nodes = in_['data']
+    end
+
+    all_nodes.each do |result|
+      data ={ 
+          "name"=>result[1],
+          :id => result[0].to_s()
+       } 
+      nodes["http://localhost:7474/db/data/node/"+result[0].to_s()] = data
+      rels["#{type}:#{result[2]}"] << {:values => data }
+    end
+
+      rels.each_pair do |key, value|
+        attributes << {:id => key.split(':').last, :name => key, :values => value.collect{|v| v[:values]} }
+      end
+
+    @node = {
+              :data => {:attributes => attributes}
+            }
+
+    @node.to_json
+  end
+
   get '/resources/show' do
     content_type :json
-
     node = neo.get_node(params[:id]) 
-    connections = neo.traverse(node, "fullpath", neighbours)
+    
+    count_out = neo.execute_query("start n=node("+params[:id]+") match n-[r]->m return count(m)")['data'][0][0]
+    count_in = neo.execute_query("start n=node("+params[:id]+") match n<-[r]-m return count(m)")['data'][0][0]
+    
+    out_, in_ = get_adjacent_for_donut(params[:id],0,@page_size)
+
     incoming = Hash.new{|h, k| h[k] = []}
     outgoing = Hash.new{|h, k| h[k] = []}
     nodes = Hash.new
     attributes = Array.new
+    all_nodes = out_['data'] + in_['data']
 
-    connections.each do |c|
-       c["nodes"].each do |n|
-         nodes[n["self"]] = n["data"]
-       end
-       rel = c["relationships"][0]
+    all_nodes.each do |result|
+      data ={ 
+          "name"=>result[1]
+       } 
+      nodes["http://localhost:7474/db/data/node/"+result[0].to_s()] = data
+    end
 
-       if rel["end"] == node["self"]
-         incoming["Incoming:#{rel["type"]}"] << {:values => nodes[rel["start"]].merge({:id => node_id(rel["start"]) }) }
-       else
-         outgoing["Outgoing:#{rel["type"]}"] << {:values => nodes[rel["end"]].merge({:id => node_id(rel["end"]) }) }
-       end
+    out_['data'].each do |result|
+      outgoing["Outgoing:#{result[2]}"] << {:values => nodes["http://localhost:7474/db/data/node/"+result[0].to_s()].merge({:id => result[0].to_s() }) }
+    end
+
+    in_['data'].each do |result|
+      incoming["Incoming:#{result[2]}"] << {:values => nodes["http://localhost:7474/db/data/node/"+result[0].to_s()].merge({:id => result[0].to_s() }) }
+    end
+
+    if (count_out > 1)
+      outgoing["Outgoing:more_subjects"] << {:values=>{:id =>"more_outgoing:1", :name => 'get more outgoing relationships', :values => "" }}
+    end
+
+    if (count_in > 1)
+      incoming["Incoming:more_subjects"] << {:values=>{:id =>"more_incoming:1", :name => 'get more ingoing relationships',:values => "" }}
     end
 
       incoming.merge(outgoing).each_pair do |key, value|
         attributes << {:id => key.split(':').last, :name => key, :values => value.collect{|v| v[:values]} }
       end
+
 
    attributes = [{"name" => "No Relationships","name" => "No Relationships","values" => [{"id" => "#{params[:id]}","name" => "No Relationships "}]}] if attributes.empty?
 
